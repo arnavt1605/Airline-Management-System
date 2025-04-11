@@ -1,8 +1,8 @@
-<h3>Airline Management System</h3>
+<h1>Airline Management System</h1>
 <p>This is a web-based application made using Flask, which is a microframework of Python, along with HTML and CSS.</p>
 <p>The database used is MySQL</p>
 
-<h1>Software used</h1>
+<h3>Software used</h3>
 <ol>
   <li>Flask</li>
   <li>MySQL</li>
@@ -12,7 +12,7 @@
   <li>Bootstrap CSS</li>
 </ol>
 
-<h1>Optional</h1>
+<h3>Optional</h3>
 <p>You can also create an virtual environemt for running the project, which is highly recommended. Python virtual environments provide isolated spaces for your Python projects.</p>
 <p>To make a virtual environment:</p>
 
@@ -22,14 +22,14 @@
   <li>Activate the directory using "<name_of_environment>/Scripts/activate"</li>
 </ol>
 
-<h1>Dependencies to install</h1>
+<h3>Dependencies to install</h3>
 <ol>
   <li>Open terminal and activate your virtual environment</li>
   <li>Install Flask using "pip install flask"</li>
   <li>Install Mysql connector python using "pip install mysql-connector-python" </li>
 </ol>
 
-<h1>How to run</h1>
+<h3>How to run</h3>
 <ol>
   <li>Open the Terminal</li>
   <li>Navigate the the server folder</li>
