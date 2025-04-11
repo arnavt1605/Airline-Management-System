@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Employees</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+
+<body class="bg-light">
+    <div class="container mt-5">
+        <h2 class="text-center mb-4">Manage Employees</h2>
+
+        {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+        {% endif %}
+
+        {% if success_message %}
+        <div class="alert alert-success">{{ success_message }}</div>
+        {% endif %}
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Add New Employee</h5>
+                        <form method="POST" action="{{ url_for('manage_employee_action') }}">
+                            <input type="hidden" name="action" value="add">
+                            <div class="mb-3">
+                                <label for="employee_name" class="form-label">Employee Name:</label>
+                                <input type="text" class="form-control" id="employee_name" name="employee_name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="airport_code" class="form-label">Assigned Airport:</label>
+                                <select class="form-select" id="airport_code" name="airport_code" required>
+                                    <option value="" disabled selected>-- Select Airport --</option>
+                                    {% for airport in airports %}
+                                    <option value="{{ airport[0] }}">{{ airport[1] }} ({{ airport[0] }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="contact_number" class="form-label">Contact Number:</label>
+                                <input type="text" class="form-control" id="contact_number" name="contact_number" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="email_address" class="form-label">Email Address:</label>
+                                <input type="email" class="form-control" id="email_address" name="email_address" required>
+                            </div>
+                            <button type="submit" class="btn btn-success">Add Employee</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Existing Employees</h5>
+                        {% if employees %}
+                        <div class="table-responsive">
+                            <table class="table table-striped table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Airport</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for employee in employees %}
+                                    <tr>
+                                        <td>{{ employee[1] }}</td>
+                                        <td>{{ employee[2] or 'N/A' }}</td>
+                                        <td>
+                                            <form method="POST" action="{{ url_for('manage_employee_action') }}" style="display:inline;">
+                                                <input type="hidden" name="action" value="delete">
+                                                <input type="hidden" name="delete_employee_id" value="{{ employee[0] }}">
+                                                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <p>No employees found.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="mt-3">
+            <a href="{{ url_for('staff_dashboard') }}" class="btn btn-secondary">Back to Staff Dashboard</a>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

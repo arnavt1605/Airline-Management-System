@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flight Status</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+
+<body class="bg-light">
+    <div class="container mt-5">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="text-center">Flight Status</h2>
+                {% if status %}
+                <p>Flight Number: {{ status.Flight_Number }}</p>
+                <p>Status: {{ status.Status }}</p>
+                <p>Last Updated: {{ status.Status_Update_Time }}</p>
+                <p>Delay Reason: {{ status.Delay_Reason }}</p>
+                {% else %}
+                <p>Flight status not found.</p>
+                {% endif %}
+                <a href="/passenger_dashboard" class="btn btn-secondary mt-3">Back to Dashboard</a>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Flight</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+
+<body class="bg-light">
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h2 class="text-center">Add Flight</h2>
+                        <form action="/add_flight" method="post">
+                            <div class="mb-3">
+                                <label for="flight_number" class="form-label">Flight Number:</label><br>
+                                <input type="text" id="flight_number" name="flight_number" class="form-control"
+                                    required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="departure_time" class="form-label">Departure Time:</label><br>
+                                <input type="time" id="departure_time" name="departure_time" class="form-control">
+                            </div>
+                            <div class="mb-3">
+                                <label for="arrival_time" class="form-label">Arrival Time:</label><br>
+                                <input type="time" id="arrival_time" name="arrival_time" class="form-control">
+                            </div>
+                            <div class="mb-3">
+                                <label for="flight_date" class="form-label">Flight Date:</label><br>
+                                <input type="date" id="flight_date" name="flight_date" class="form-control">
+                            </div>
+                            <div class="mb-3">
+                                <label for="airplane_id" class="form-label">Airplane ID:</label><br>
+                                <input type="text" id="airplane_id" name="airplane_id" class="form-control">
+                            </div>
+                            <div class="mb-3">
+                                <label for="route_id" class="form-label">Route ID:</label><br>
+                                <input type="number" id="route_id" name="route_id" class="form-control">
+                            </div>
+                            <button type="submit" class="btn btn-primary mt-3">Add Flight</button>
+                        </form>
+                        <a href="/staff_dashboard" class="btn btn-secondary mt-3">Back to Dashboard</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
