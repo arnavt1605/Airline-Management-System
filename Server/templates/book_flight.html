@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -21,112 +20,153 @@
             cursor: pointer;
         }
 
+        .seat.available {
+            background-color: #f8f9fa;
+            color: #000;
+        }
+
         .seat.selected {
             background-color: #007bff;
             color: white;
         }
+
+        .seat.unavailable {
+            background-color: #6c757d;
+            color: #fff;
+            cursor: not-allowed;
+        }
     </style>
 </head>
-
 <body class="bg-light">
     <div class="container mt-5">
         <div class="row justify-content-center">
-            <div class="col-md-6">
+            <div class="col-md-8">
                 <div class="card">
                     <div class="card-body">
-                        <h2 class="text-center">Book Flight</h2>
-                        <form action="/book_flight" method="post">
+                        <h2 class="text-center mb-4">Book a Flight</h2>
+                        <form method="POST" action="/book_flight">
                             <div class="mb-3">
-                                <label for="flight_id" class="form-label">Flight ID:</label><br>
-                                <input type="text" id="flight_id" name="flight_id" class="form-control" required>
+                                <label for="flight_id" class="form-label">Flight ID:</label>
+                                <input type="text" class="form-control" id="flight_id" name="flight_id" required placeholder="Enter Flight ID">
                             </div>
                             <div class="mb-3">
-                                <label for="class_id" class="form-label">Class ID:</label><br>
-                                <input type="text" id="class_id" name="class_id" class="form-control" required>
+                                <label for="passenger_id" class="form-label">Passenger ID:</label>
+                                <input type="text" class="form-control" id="passenger_id" name="passenger_id" required placeholder="Enter Passenger ID">
+                            </div>
+                            <div class="mb-3">
+                                <label for="class_id" class="form-label">Select Class:</label>
+                                <select class="form-select" id="class_id" name="class_id" required>
+                                    <option value="" disabled selected>Select Class</option>
+                                    <option value="1">Economy</option>
+                                    <option value="2">Business</option>
+                                    <option value="3">First Class</option>
+                                </select>
                             </div>
                             <div class="mb-3">
                                 <label for="seat_number" class="form-label">Seat Number:</label><br>
                                 <input type="text" id="seat_number" name="seat_number" class="form-control"
-                                    required><br><br>
+                                       required readonly placeholder="Select a seat">
+                                <small class="text-muted">Click on a seat to select it.</small><br><br>
+                            </div>
+                            <div class="mb-3">
+                                <label for="booking_status" class="form-label">Booking Status:</label>
+                                <select class="form-select" id="booking_status" name="booking_status" required>
+                                    <option value="" disabled selected>Select Booking Status</option>
+                                    <option value="Reserved">Reserved</option>
+                                    <option value="Confirmed">Confirmed</option>
+                                    <option value="Cancelled">Cancelled</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="transaction_id" class="form-label">Transaction ID:</label>
+                                <input type="text" class="form-control" id="transaction_id" name="transaction_id" required placeholder="Enter Transaction ID">
                             </div>
 
                             <div id="seat-map" class="mb-3">
                                 <h3>Select a Seat:</h3>
                                 <div class="seat-row">
-                                    <button type="button" class="seat" onclick="selectSeat('1A')">1A</button>
-                                    <button type="button" class="seat" onclick="selectSeat('1B')">1B</button>
-                                    <button type="button" class="seat" onclick="selectSeat('1C')">1C</button>
-                                    <button type="button" class="seat" onclick="selectSeat('1D')">1D</button>
+                                    <button type="button" class="seat available" data-seat="1A" onclick="selectSeat('1A')">1A</button>
+                                    <button type="button" class="seat available" data-seat="1B" onclick="selectSeat('1B')">1B</button>
+                                    <button type="button" class="seat available" data-seat="1C" onclick="selectSeat('1C')">1C</button>
+                                    <button type="button" class="seat available" data-seat="1D" onclick="selectSeat('1D')">1D</button>
                                 </div>
                                 <div class="seat-row">
-                                    <button type="button" class="seat" onclick="selectSeat('2A')">2A</button>
-                                    <button type="button" class="seat" onclick="selectSeat('2B')">2B</button>
-                                    <button type="button" class="seat" onclick="selectSeat('2C')">2C</button>
-                                    <button type="button" class="seat" onclick="selectSeat('2D')">2D</button>
+                                    <button type="button" class="seat available" data-seat="2A" onclick="selectSeat('2A')">2A</button>
+                                    <button type="button" class="seat available" data-seat="2B" onclick="selectSeat('2B')">2B</button>
+                                    <button type="button" class="seat available" data-seat="2C" onclick="selectSeat('2C')">2C</button>
+                                    <button type="button" class="seat available" data-seat="2D" onclick="selectSeat('2D')">2D</button>
                                 </div>
-                                <div class="seat-row">
-                                    <button type="button" class="seat" onclick="selectSeat('3A')">3A</button>
-                                    <button type="button" class="seat" onclick="selectSeat('3B')">3B</button>
-                                    <button type="button" class="seat" onclick="selectSeat('3C')">3C</button>
-                                    <button type="button" class="seat" onclick="selectSeat('3D')">3D</button>
+                                 <div class="seat-row">
+                                    <button type="button" class="seat available" data-seat="3A" onclick="selectSeat('3A')">3A</button>
+                                    <button type="button" class="seat available" data-seat="3B" onclick="selectSeat('3B')">3B</button>
+                                    <button type="button" class="seat available" data-seat="3C" onclick="selectSeat('3C')">3C</button>
+                                    <button type="button" class="seat available" data-seat="3D" onclick="selectSeat('3D')">3D</button>
                                 </div>
-                                <div class="seat-row">
-                                    <button type="button" class="seat" onclick="selectSeat('4A')">4A</button>
-                                    <button type="button" class="seat" onclick="selectSeat('4B')">4B</button>
-                                    <button type="button" class="seat" onclick="selectSeat('4C')">4C</button>
-                                    <button type="button" class="seat" onclick="selectSeat('4D')">4D</button>
+                                 <div class="seat-row">
+                                    <button type="button" class="seat available" data-seat="4A" onclick="selectSeat('4A')">4A</button>
+                                    <button type="button" class="seat available" data-seat="4B" onclick="selectSeat('4B')">4B</button>
+                                    <button type="button" class="seat available" data-seat="4C" onclick="selectSeat('4C')">4C</button>
+                                    <button type="button" class="seat available" data-seat="4D" onclick="selectSeat('4D')">4D</button>
                                 </div>
-                                <div class="seat-row">
-                                    <button type="button" class="seat" onclick="selectSeat('5A')">5A</button>
-                                    <button type="button" class="seat" onclick="selectSeat('5B')">5B</button>
-                                    <button type="button" class="seat" onclick="selectSeat('5C')">5C</button>
-                                    <button type="button" class="seat" onclick="selectSeat('5D')">5D</button>
+                                 <div class="seat-row">
+                                    <button type="button" class="seat available" data-seat="5A" onclick="selectSeat('5A')">5A</button>
+                                    <button type="button" class="seat available" data-seat="5B" onclick="selectSeat('5B')">5B</button>
+                                    <button type="button" class="seat available" data-seat="5C" onclick="selectSeat('5C')">5C</button>
+                                    <button type="button" class="seat available" data-seat="5D" onclick="selectSeat('5D')">5D</button>
                                 </div>
-                                <div class="seat-row">
-                                    <button type="button" class="seat" onclick="selectSeat('6A')">6A</button>
-                                    <button type="button" class="seat" onclick="selectSeat('6B')">6B</button>
-                                    <button type="button" class="seat" onclick="selectSeat('6C')">6C</button>
-                                    <button type="button" class="seat" onclick="selectSeat('6D')">6D</button>
+                                 <div class="seat-row">
+                                    <button type="button" class="seat available" data-seat="6A" onclick="selectSeat('6A')">6A</button>
+                                    <button type="button" class="seat available" data-seat="6B" onclick="selectSeat('6B')">6B</button>
+                                    <button type="button" class="seat available" data-seat="6C" onclick="selectSeat('6C')">6C</button>
+                                    <button type="button" class="seat available" data-seat="6D" onclick="selectSeat('6D')">6D</button>
                                 </div>
-                                <div class="seat-row">
-                                    <button type="button" class="seat" onclick="selectSeat('7A')">7A</button>
-                                    <button type="button" class="seat" onclick="selectSeat('7B')">7B</button>
-                                    <button type="button" class="seat" onclick="selectSeat('7C')">7C</button>
-                                    <button type="button" class="seat" onclick="selectSeat('7D')">7D</button>
+                                 <div class="seat-row">
+                                    <button type="button" class="seat available" data-seat="7A" onclick="selectSeat('7A')">7A</button>
+                                    <button type="button" class="seat available" data-seat="7B" onclick="selectSeat('7B')">7B</button>
+                                    <button type="button" class="seat available" data-seat="7C" onclick="selectSeat('7C')">7C</button>
+                                    <button type="button" class="seat available" data-seat="7D" onclick="selectSeat('7D')">7D</button>
                                 </div>
-                                <div class="seat-row">
-                                    <button type="button" class="seat" onclick="selectSeat('8A')">8A</button>
-                                    <button type="button" class="seat" onclick="selectSeat('8B')">8B</button>
-                                    <button type="button" class="seat" onclick="selectSeat('8C')">8C</button>
-                                    <button type="button" class="seat" onclick="selectSeat('8D')">8D</button>
+                                 <div class="seat-row">
+                                    <button type="button" class="seat available" data-seat="8A" onclick="selectSeat('8A')">8A</button>
+                                    <button type="button" class="seat available" data-seat="8B" onclick="selectSeat('8B')">8B</button>
+                                    <button type="button" class="seat available" data-seat="8C" onclick="selectSeat('8C')">8C</button>
+                                    <button type="button" class="seat available" data-seat="8D" onclick="selectSeat('8D')">8D</button>
                                 </div>
-                                <div class="seat-row">
-                                    <button type="button" class="seat" onclick="selectSeat('9A')">9A</button>
-                                    <button type="button" class="seat" onclick="selectSeat('9B')">9B</button>
-                                    <button type="button" class="seat" onclick="selectSeat('9C')">9C</button>
-                                    <button type="button" class="seat" onclick="selectSeat('9D')">9D</button>
+                                 <div class="seat-row">
+                                    <button type="button" class="seat available" data-seat="9A" onclick="selectSeat('9A')">9A</button>
+                                    <button type="button" class="seat available" data-seat="9B" onclick="selectSeat('9B')">9B</button>
+                                    <button type="button" class="seat available" data-seat="9C" onclick="selectSeat('9C')">9C</button>
+                                    <button type="button" class="seat available" data-seat="9D" onclick="selectSeat('9D')">9D</button>
                                 </div>
-                                <div class="seat-row">
-                                    <button type="button" class="seat" onclick="selectSeat('10A')">10A</button>
-                                    <button type="button" class="seat" onclick="selectSeat('10B')">10B</button>
-                                    <button type="button" class="seat" onclick="selectSeat('10C')">10C</button>
-                                    <button type="button" class="seat" onclick="selectSeat('10D')">10D</button>
+                                 <div class="seat-row">
+                                    <button type="button" class="seat available" data-seat="10A" onclick="selectSeat('10A')">10A</button>
+                                    <button type="button" class="seat available" data-seat="10B" onclick="selectSeat('10B')">10B</button>
+                                    <button type="button" class="seat available" data-seat="10C" onclick="selectSeat('10C')">10C</button>
+                                    <button type="button" class="seat available" data-seat="10D" onclick="selectSeat('10D')">10D</button>
                                 </div>
                             </div>
-                            <button type="submit" class="btn btn-primary">Book</button>
+                            <button type="submit" class="btn btn-primary">Make Payment</button>
                         </form>
-                        <a href="/passenger_dashboard" class="btn btn-secondary">Back to Dashboard</a>
+                         <a href="/passenger_dashboard" class="btn btn-secondary mt-3">Back to Dashboard</a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
     <script>
         function selectSeat(seat) {
             document.getElementById('seat_number').value = seat;
+            // Get all seat elements
+            const seats = document.querySelectorAll('.seat');
+            // Remove 'selected' class from all seats
+            seats.forEach(s => s.classList.remove('selected'));
+            // Add 'selected' class to the clicked seat
+            const selectedSeat = document.querySelector(`[data-seat="${seat}"]`);
+            if (selectedSeat) {
+                selectedSeat.classList.add('selected');
+            }
+
         }
     </script>
 </body>
-
 </html>

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Available Flights</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    </head>
+</head>
 <body>
     <div class="container mt-5">
         <h2>Available Flights</h2>
@@ -19,12 +19,18 @@
                     <th>Departure Time</th>
                     <th>Arrival Time</th>
                     <th>Airline</th>
-                    </tr>
+                </tr>
             </thead>
             <tbody>
                 {% for flight in flights %}
                 <tr>
-                    <td>{{ flight[0] }}</td> <td>{{ flight[1] }}</td> <td>{{ flight[2] }}</td> <td>{{ flight[3] }}</td> <td>{{ flight[4] }}</td> <td>{{ flight[5] }}</td> </tr>
+                    <td>{{ flight[0] }}</td>
+                    <td>{{ flight[1] }}</td>
+                    <td>{{ flight[2] }}</td>
+                    <td>{{ flight[3] }}</td>
+                    <td>{{ flight[4] }}</td>
+                    <td>{{ flight[5] }}</td>
+                </tr>
                 {% endfor %}
             </tbody>
         </table>

@@ -14,21 +14,33 @@
             <div class="col-md-6">
                 <div class="card">
                     <div class="card-body">
-                        <h2 class="text-center">Update Airfare</h2>
+                        <h2 class="text-center">Add Airfare</h2>
                         <form action="/update_airfare" method="post">
                             <div class="mb-3">
-                                <label for="fare_id" class="form-label">Fare ID:</label><br>
+                                <label for="fare_id" class="form-label">Fare ID:</label>
                                 <input type="text" id="fare_id" name="fare_id" class="form-control" required>
                             </div>
                             <div class="mb-3">
-                                <label for="base_amount" class="form-label">Base Amount:</label><br>
-                                <input type="text" id="base_amount" name="base_amount" class="form-control">
+                                <label for="base_amount" class="form-label">Base Amount:</label>
+                                <input type="number" step="0.01" id="base_amount" name="base_amount" class="form-control" required>
                             </div>
                             <div class="mb-3">
-                                <label for="discount" class="form-label">Discount:</label><br>
-                                <input type="text" id="discount" name="discount" class="form-control">
+                                <label for="tax_amount" class="form-label">Tax Amount:</label>
+                                <input type="number" step="0.01" id="tax_amount" name="tax_amount" class="form-control" required>
                             </div>
-                            <button type="submit" class="btn btn-primary mt-3">Update</button>
+                            <div class="mb-3">
+                                <label for="discount" class="form-label">Discount:</label>
+                                <input type="number" step="0.01" id="discount" name="discount" class="form-control" value="0.00">
+                            </div>
+                            <div class="mb-3">
+                                <label for="flight_id" class="form-label">Flight ID:</label>
+                                <input type="text" id="flight_id" name="flight_id" class="form-control" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="class_id" class="form-label">Class ID:</label>
+                                <input type="number" id="class_id" name="class_id" class="form-control" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary mt-3">Add Airfare</button>
                         </form>
                         <a href="/staff_dashboard" class="btn btn-secondary mt-3">Back to Dashboard</a>
                     </div>

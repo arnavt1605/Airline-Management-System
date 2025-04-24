@@ -1,30 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flight Status</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <title>Flight Status Result</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-
 <body class="bg-light">
     <div class="container mt-5">
-        <div class="card">
-            <div class="card-body">
-                <h2 class="text-center">Flight Status</h2>
-                {% if status %}
-                <p>Flight Number: {{ status.Flight_Number }}</p>
-                <p>Status: {{ status.Status }}</p>
-                <p>Last Updated: {{ status.Status_Update_Time }}</p>
-                <p>Delay Reason: {{ status.Delay_Reason }}</p>
-                {% else %}
-                <p>Flight status not found.</p>
-                {% endif %}
-                <a href="/passenger_dashboard" class="btn btn-secondary mt-3">Back to Dashboard</a>
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h2 class="card-title text-center mb-4">Flight Status</h2>
+                        <form method="POST" action="/flight_status_result">
+                            <div class="mb-3">
+                                <label for="flight_id" class="form-label">Flight ID:</label>
+                                <input type="text" class="form-control" id="flight_id" name="flight_id" required placeholder="Enter Flight ID">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Check Status</button>
+                        </form>
+
+                        {% if flight_status %}
+                            <div class="mt-4">
+                                <h4>Flight Status:</h4>
+                                <div class="alert alert-info" role="alert">
+                                    <strong>Status:</strong> {{ flight_status[0] }}<br>
+                                    {% if flight_status[1] %}
+                                        <strong>Delay Reason:</strong> {{ flight_status[1] }}
+                                    {% else %}
+                                        <strong>Delay Reason:</strong> No delay
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endif %}
+                        <a href="/passenger_dashboard" class="btn btn-secondary mt-3">Back to Dashboard</a>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
-
 </html>

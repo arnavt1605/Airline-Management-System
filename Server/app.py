@@ -1,4 +1,6 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, flash
+from datetime import time
+import logging
 import mysql.connector
 
 app = Flask(__name__)
@@ -145,45 +147,262 @@ def passenger_dashboard():
         return redirect(url_for('login'))
     return render_template('passenger_dashboard.html')
 
+
+
+
+#Add passenger details
+@app.route('/add_passenger', methods=['GET', 'POST'])
+def add_passenger():
+    """
+    Allows a passenger to add their details.
+    """
+    if 'user_id' not in session or session['user_type'] != 'passenger':
+        return redirect(url_for('login'))
+
+    conn = None
+    if request.method == 'POST':
+        try:
+            passenger_id = request.form.get('passenger_id')
+            passenger_name = request.form.get('passenger_name')
+            age = request.form.get('age')
+            gender = request.form.get('gender')
+            address = request.form.get('address')
+            contact_number = request.form.get('contact_number')
+            email = request.form.get('email')
+
+            if not all([passenger_id, passenger_name, age, gender, address, contact_number, email]):
+                flash("All fields are required.", "danger")
+                return render_template('add_passenger.html')
+
+            try:
+                passenger_id = int(passenger_id)
+                age = int(age)
+            except ValueError:
+                flash("Invalid data format. Passenger ID and Age must be numbers.", "danger")
+                return render_template('add_passenger.html')
+
+            conn = get_db_connection()
+            if conn:
+                cursor = conn.cursor()
+                try:
+                    cursor.execute(
+                        "INSERT INTO Passengers (Passenger_ID, Passenger_Name, Age, Gender, Address, Contact_Number, Email) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                        (passenger_id, passenger_name, age, gender, address, contact_number, email))
+                    conn.commit()
+                    cursor.close()
+                    flash("Passenger details added successfully!", "success")
+                    return redirect(url_for('passenger_dashboard'))  # Redirect to dashboard
+                except Exception as db_error:
+                    conn.rollback()
+                    logging.error(f"Database error: {db_error}")
+                    flash(f"Database error: {db_error}", "danger")
+                    return render_template('add_passenger.html')
+            else:
+                flash("Database connection error", "danger")
+                return render_template('add_passenger.html')
+        except Exception as e:
+            logging.error(f"Error adding passenger: {e}")
+            flash(f"An error occurred: {e}", "danger")
+            return render_template('add_passenger.html')
+        finally:
+            if conn:
+                conn.close()
+    return render_template('add_passenger.html')
+
+
+
+
 #View Available flights
 @app.route('/passenger/flights')
 def view_available_flights():
     if 'user_id' not in session or session['user_type'] != 'passenger':
-        return redirect(url_for('login')) # Redirect if not logged in as passenger
+        return redirect(url_for('login'))
 
     conn = get_db_connection()
     flights = []
     if conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM Flight") # Fetch all rows from the Flight table
-        flights = cursor.fetchall()
-        cursor.close()
-        conn.close()
-
+        try:
+            cursor.execute("""
+                SELECT
+                    f.Flight_ID,
+                    a1.Airport_Name AS Departure_City,
+                    a2.Airport_Name AS Arrival_City,
+                    f.Departure_Time,
+                    f.Arrival_Time,
+                    at.Manufacturer AS Airline
+                FROM Flight f
+                JOIN Route r ON f.Route_ID = r.Route_ID
+                JOIN Airport a1 ON r.Origin_Airport_Code = a1.Airport_Code
+                JOIN Airport a2 ON r.Destination_Airport_Code = a2.Airport_Code
+                JOIN Airplane_type at ON f.Airplane_ID = at.Airplane_ID
+            """)
+            flights = cursor.fetchall()
+        except Exception as e:
+            logging.error(f"Database error: {e}")
+            flash(f"Error fetching flights: {e}", "danger")
+            flights = []
+        finally:
+            cursor.close()
+            conn.close()
     return render_template('view_available_flights.html', flights=flights)
+
+
+
+def get_available_flights():
+    """Helper function to get available flights from the database."""
+    conn = get_db_connection()
+    flights = []
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                SELECT
+                    f.Flight_ID,
+                    a1.Airport_Name AS Departure_City,
+                    a2.Airport_Name AS Arrival_City,
+                    f.Departure_Time,
+                    f.Arrival_Time,
+                    apt.Airline_Name
+                FROM Flight f
+                JOIN Route r ON f.Route_ID = r.Route_ID
+                JOIN Airport a1 ON r.Origin_Airport_Code = a1.Airport_Code
+                JOIN Airport a2 ON r.Destination_Airport_Code = a2.Airport_Code
+                JOIN Airplane_type apt ON f.Airplane_ID = apt.Airplane_ID
+            """)
+            flights = cursor.fetchall()
+        except Exception as e:
+            logging.error(f"Database error: {e}")
+            flash(f"Error fetching flights: {e}", "danger")
+            flights = []
+        finally:
+            cursor.close()
+            conn.close()
+    return flights
+
+
 
 # Update Flight Status
 @app.route('/update_flight_status', methods=['GET', 'POST'])
 def update_flight_status():
+    """Allows staff to update flight status."""
     if session.get('user_type') != 'staff':
         return redirect(url_for('login'))
+
+    conn = get_db_connection()
+    if not conn:
+        return render_template('update_flight_status.html')
+
+    cursor = conn.cursor()
     if request.method == 'POST':
-        flight_id = request.form['flight_id']
-        status = request.form['status']
-        delay_reason = request.form['delay_reason']
-        conn = get_db_connection()
-        if conn:
-            cursor = conn.cursor()
+        try:
+            status_id = request.form.get('status_id')
+            flight_id = request.form.get('flight_id')
+            status = request.form.get('status')
+            delay_reason = request.form.get('delay_reason')
+
+            if not all([status_id, flight_id, status]):
+                flash("Status ID, Flight ID, and Status are required.", "danger")
+                return render_template('update_flight_status.html')
+
+            # Insert or Update
             cursor.execute(
-                "UPDATE Flight_Status SET Status = %s, Delay_Reason = %s WHERE Flight_ID = %s",
-                (status, delay_reason, flight_id))
+                """
+                INSERT INTO Flight_Status (Status_ID, Flight_ID, Status, Delay_Reason) 
+                VALUES (%s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                Flight_ID = %s, Status = %s, Delay_Reason = %s
+                """,
+                (status_id, flight_id, status, delay_reason, flight_id, status, delay_reason)
+            )
             conn.commit()
+            flash("Flight status updated successfully!", "success")
             cursor.close()
             conn.close()
-            return redirect(url_for('staff_dashboard'))
-        else:
-            return "Database connection error"
-    return render_template('update_flight_status.html')
+            return redirect(url_for('update_flight_status'))
+
+        except mysql.connector.Error as e:
+            conn.rollback()
+            logging.error(f"Database error updating flight status: {e}")
+            flash(f"Database error: {e}", "danger")
+            cursor.close()
+            conn.close()
+            return render_template('update_flight_status.html')
+        finally:
+            if conn:
+                conn.close()
+    else:
+        return render_template('update_flight_status.html')
+    
+
+
+
+#Process payment
+@app.route('/process_payment', methods=['GET', 'POST'])
+def process_payment():
+    """Processes the payment for a booking."""
+    if 'booking_details' not in session:
+        return redirect(url_for('passenger_dashboard'))  # Redirect if no booking details
+
+    booking_details = session['booking_details']
+    fare_details = session['fare_details']
+    conn = None
+    if request.method == 'POST':
+        try:
+            payment_method = request.form.get('payment_method')
+            payment_status = request.form.get('payment_status')
+
+            if not all([payment_method, payment_status]):
+                flash("All payment fields are required", "danger")
+                return render_template('process_payment.html', booking_details=booking_details)
+
+            conn = get_db_connection()
+            if conn:
+                cursor = conn.cursor()
+                booking_date = datetime.now()
+                # 1. Insert into Transactions
+                cursor.execute(
+                    "INSERT INTO Transactions (Transaction_ID, Booking_Date, Payment_Method, Payment_Status, Amount, Passenger_ID) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (booking_details['transaction_id'], booking_date, payment_method, payment_status, booking_details['amount'], booking_details['passenger_id']))
+                try:
+                    conn.commit()
+                except Exception as e:
+                    conn.rollback()
+                    flash(f"Transaction Error: {e}", "danger")
+                    return render_template('process_payment.html', booking_details=booking_details)
+
+                # 2. Insert into Booking
+                cursor.execute(
+                    "INSERT INTO Booking (Booking_Status, Seat_Number, Class_ID, Transaction_ID, Flight_ID, Passenger_ID) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (booking_details['booking_status'], booking_details['seat_number'], booking_details['class_id'], booking_details['transaction_id'], booking_details['flight_id'], booking_details['passenger_id']))
+                try:
+                    conn.commit()
+                except Exception as e:
+                    conn.rollback()
+                    flash(f"Booking Error: {e}", "danger")
+                    return render_template('process_payment.html', booking_details=booking_details)
+                cursor.close()
+                conn.close()
+                del session['booking_details']  # Clear booking details from session
+                del session['fare_details']
+                flash("Booking and payment successful!", "success")
+                return redirect(url_for('passenger_dashboard'))
+            else:
+                flash("Database connection error", "danger")
+                return render_template('process_payment.html', booking_details=booking_details)
+        except Exception as e:
+            logging.error(f"Error processing payment: {e}")
+            flash(f"An error occurred: {e}", "danger")
+            return render_template('process_payment.html', booking_details=booking_details)
+        finally:
+            if conn:
+                conn.close()
+
+    return render_template('process_payment.html', booking_details=booking_details,fare_details = fare_details)
+
+
+
+
 
 
 # Update Airfare
@@ -192,163 +411,233 @@ def update_airfare():
     if session.get('user_type') != 'staff':
         return redirect(url_for('login'))
     if request.method == 'POST':
-        fare_id = request.form['fare_id']
-        base_amount = request.form['base_amount']
-        discount = request.form['discount']
+        try:
+            fare_id = request.form.get('fare_id')
+            base_amount = request.form.get('base_amount')
+            tax_amount = request.form.get('tax_amount')
+            discount = request.form.get('discount')
+            flight_id = request.form.get('flight_id')
+            class_id = request.form.get('class_id')
+
+            if not all([fare_id, base_amount, tax_amount, flight_id, class_id]):
+                flash("All required fields must be filled.", "danger")
+                return render_template('update_airfare.html')
+
+            try:
+                base_amount = float(base_amount)
+                tax_amount = float(tax_amount)
+                discount = float(discount) if discount else 0.00
+                class_id = int(class_id)
+            except ValueError:
+                flash("Invalid data format for amount or class ID.", "danger")
+                return render_template('update_airfare.html')
+
+            conn = get_db_connection()
+            if conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "INSERT INTO AirFare (Fare_ID, Base_Amount, Tax_Amount, Discount, Flight_ID, Class_ID) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (fare_id, base_amount, tax_amount, discount, flight_id, class_id)
+                )
+                conn.commit()
+                cursor.close()
+                conn.close()
+                flash("Airfare information added successfully!", "success")
+                return redirect(url_for('staff_dashboard'))
+            else:
+                flash("Database connection error.", "danger")
+                return render_template('update_airfare.html')
+
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logging.error(f"Error updating airfare: {e}")
+            flash(f"An error occurred: {e}", "danger")
+            return render_template('update_airfare.html')
+
+    return render_template('update_airfare.html')
+
+
+#View Fare Classes
+@app.route('/view_classes')
+def view_classes():
+    if session.get('user_type') == 'passenger':
         conn = get_db_connection()
         if conn:
             cursor = conn.cursor()
-            cursor.execute(
-                "UPDATE AirFare SET Base_Amount = %s, Discount = %s WHERE Fare_ID = %s",
-                (base_amount, discount, fare_id))
-            conn.commit()
+            cursor.execute("SELECT Class_ID, Class_Name, Description FROM Fare_Class")  # Updated SQL query
+            fare_classes = cursor.fetchall()
             cursor.close()
             conn.close()
-            return redirect(url_for('staff_dashboard'))
+            return render_template('view_classes.html', fare_classes=fare_classes)
         else:
             return "Database connection error"
-    return render_template('update_airfare.html')
+    else:
+        return redirect(url_for('login'))
+
 
 
 # Flight Booking
 @app.route('/book_flight', methods=['GET', 'POST'])
 def book_flight():
-    if session.get('user_type') != 'passenger':
+    """
+    Allows a passenger to book a flight, including seat selection and booking details.
+    """
+    if 'user_id' not in session or session['user_type'] != 'passenger':
+        return redirect(url_for('login'))
+
+    conn = None
+    if request.method == 'POST':
+        try:
+            flight_id = request.form.get('flight_id')
+            passenger_id = request.form.get('passenger_id')  # Get passenger_id from form
+            class_id = request.form.get('class_id')
+            seat_number = request.form.get('seat_number')
+            booking_status = request.form.get('booking_status')
+            transaction_id = request.form.get('transaction_id') #get transaction id
+
+            if not all([flight_id, passenger_id, class_id, seat_number, booking_status, transaction_id]):
+                flash("All booking fields are required", "danger")
+                return render_template('book_flight.html')
+
+            conn = get_db_connection()
+            if conn:
+                cursor = conn.cursor()
+
+                # 1. Get fare details (Base_Amount, Tax_Amount, Discount)
+                cursor.execute(
+                    "SELECT Base_Amount, Tax_Amount, Discount FROM AirFare WHERE Flight_ID = %s AND Class_ID = %s",
+                    (flight_id, class_id))
+                fare_data = cursor.fetchone()
+                if not fare_data:
+                    flash("Fare information not found for the selected flight and class.", "danger")
+                    return render_template('book_flight.html')
+
+                base_amount = fare_data[0]
+                tax_amount = fare_data[1]
+                discount_percentage = fare_data[2]
+
+                # 2. Calculate the transaction amount
+                amount = base_amount + tax_amount - (base_amount * discount_percentage / 100)
+
+                # Store booking details and calculated amount in session for the payment page
+                session['booking_details'] = {
+                    'flight_id': flight_id,
+                    'passenger_id': passenger_id,
+                    'class_id': class_id,
+                    'seat_number': seat_number,
+                    'booking_status': booking_status,
+                    'amount': amount,  # Store the calculated amount
+                    'transaction_id': transaction_id, #store transaction id
+                }
+                session['fare_details'] = {
+                    'base_amount':base_amount,
+                    'tax_amount':tax_amount,
+                    'discount_percentage':discount_percentage
+                }
+
+                conn.close()
+                return redirect(url_for('process_payment'))  # Redirect to payment processing
+
+            else:
+                flash("Database connection error", "danger")
+                return render_template('book_flight.html')
+        except Exception as e:
+            logging.error(f"Error booking flight: {e}")
+            flash(f"An error occurred: {e}", "danger")
+            return render_template('book_flight.html')
+        finally:
+            if conn:
+                conn.close()
+    else:
+        return render_template('book_flight.html')
+
+
+
+#Cancel booking
+@app.route('/cancel_booking', methods=['GET', 'POST'])
+def cancel_booking():
+    if 'user_id' not in session or session.get('user_type') != 'passenger':
+        flash("You must be logged in as a passenger to cancel a booking.")
         return redirect(url_for('login'))
 
     conn = get_db_connection()
     cursor = conn.cursor()
-    error = None
-    flights = []
-    fare_classes = []
 
     try:
-        # Fetch available flights with origin and destination
-        cursor.execute("""
-            SELECT f.Flight_ID, r.Origin_Airport_Code, r.Destination_Airport_Code, f.Departure_Time
-            FROM Flight f
-            JOIN Route r ON f.Route_ID = r.Route_ID
-        """)
-        flights = cursor.fetchall()
+        if request.method == 'POST':
+            booking_id = request.form.get('booking_id')  # Get booking_id from the form
 
-        # Fetch available fare classes
-        cursor.execute("SELECT Class_ID, Class_Name, Description FROM Fare_Class")
-        fare_classes = cursor.fetchall()
+            if not booking_id:
+                flash("Please enter the Booking ID.", "danger")
+                return render_template('cancel_booking.html')  # Show the form again
+
+            # Perform the cancellation in the database
+            cursor.execute("UPDATE Booking SET Status = 'Cancelled' WHERE Booking_ID = %s AND Passenger_ID = %s",
+                           (booking_id, session['user_id']))
+            conn.commit()
+
+            if cursor.rowcount > 0:
+                flash("Your booking has been successfully cancelled.", "success")
+            else:
+                flash("Booking not found or you are not authorized to cancel it.", "danger")
+
+            return redirect(url_for('passenger_dashboard'))
+
+        else:  # GET request - Show the form to enter booking ID
+            return render_template('cancel_booking.html')
 
     except Exception as e:
-        error = f"Error fetching data: {e}"
+        conn.rollback()
+        flash(f"An error occurred: {e}", "danger")
+        return redirect(url_for('passenger_dashboard'))
 
-    if request.method == 'POST':
-        flight_id = request.form.get('flight_id')
-        class_id = request.form.get('class_id')
-        seat_number = request.form.get('seat_number')
-        passenger_id = session['user_id']
+    finally:
+        cursor.close()
+        conn.close()
 
-        if not all([flight_id, class_id, seat_number]):
-            error = "Please select a flight, class, and seat number."
-        else:
-            try:
-                # Get the maximum capacity for the selected flight
-                cursor.execute("""
-                    SELECT ap.Passenger_Capacity
-                    FROM Flight f
-                    JOIN Airplane ap ON f.Airplane_ID = ap.Airplane_ID
-                    WHERE f.Flight_ID = %s
-                """, (flight_id,))
-                capacity_result = cursor.fetchone()
-
-                # Count existing bookings for this flight
-                cursor.execute("SELECT COUNT(*) FROM Booking WHERE Flight_ID = %s", (flight_id,))
-                booking_count_result = cursor.fetchone()
-
-                if capacity_result and booking_count_result:
-                    max_capacity = capacity_result[0]
-                    current_bookings = booking_count_result[0]
-
-                    if current_bookings >= max_capacity:
-                        error = f"Flight ID {flight_id} is fully booked. No seats remaining."
-                    else:
-                        # Check if the selected seat is already booked for this flight and class
-                        cursor.execute("""
-                            SELECT Booking_ID FROM Booking
-                            WHERE Flight_ID = %s AND Seat_Number = %s AND Class_ID = %s
-                        """, (flight_id, seat_number, class_id))
-                        existing_booking = cursor.fetchone()
-
-                        if existing_booking:
-                            error = f"Seat number {seat_number} in class {class_id} is already booked on Flight ID {flight_id}."
-                        else:
-                            # Create a transaction
-                            cursor.execute(
-                                "INSERT INTO Transactions (Booking_Date, Payment_Method, Payment_Status, Amount, Passenger_ID) VALUES (CURDATE(), 'Not Applicable', 'Pending', 0, %s)",
-                                (passenger_id,))
-                            transaction_id = cursor.lastrowid
-
-                            # Fetch booking details for display
-                            cursor.execute(
-                                "SELECT f.Flight_Number, f.Departure_Time, f.Arrival_Time, f.Flight_Date, fc.Class_Name, p.Passenger_Name, af.Base_Amount + af.Tax_Amount - af.Discount AS Total_Amount "
-                                "FROM Flight f "
-                                "JOIN Fare_Class fc ON %s = fc.Class_ID "
-                                "JOIN Passengers p ON %s = p.Passenger_ID "
-                                "JOIN AirFare af ON f.Flight_ID = af.Flight_ID AND fc.Class_ID = af.Class_ID "
-                                "WHERE f.Flight_ID = %s",
-                                (class_id, passenger_id, flight_id)
-                            )
-                            booking_details = cursor.fetchone()
-
-                            if booking_details:
-                                # Insert the booking
-                                cursor.execute(
-                                    "INSERT INTO Booking (Booking_Status, Seat_Number, Class_ID, Transaction_ID, Flight_ID, Passenger_ID) VALUES ('Confirmed', %s, %s, %s, %s, %s)",
-                                    (seat_number, class_id, transaction_id, flight_id, passenger_id)
-                                )
-                                conn.commit()
-                                cursor.close()
-                                conn.close()
-                                return render_template('booking_confirmation.html',
-                                                       passenger_name=booking_details[5],
-                                                       flight_number=booking_details[0],
-                                                       departure_time=booking_details[1],
-                                                       arrival_time=booking_details[2],
-                                                       flight_date=booking_details[3],
-                                                       class_name=booking_details[4],
-                                                       seat_number=seat_number,
-                                                       total_amount=booking_details[6],
-                                                       flight_id=flight_id,
-                                                       class_id=class_id,
-                                                       transaction_id=transaction_id)
-                            else:
-                                error = "Error fetching booking details."
-                else:
-                    error = "Error retrieving flight capacity or booking count."
-
-            except Exception as e:
-                conn.rollback()
-                error = f"Error during booking process: {e}"
-            finally:
-                cursor.close()
-                conn.close()
-
-    return render_template('book_flight.html', flights=flights, fare_classes=fare_classes, error=error)
 
 # View Booked Flights
-@app.route('/my_bookings')
-def my_bookings():
-    if session.get('user_type') != 'passenger':
+@app.route('/view_bookings')
+def view_bookings():
+    """Displays the passenger's bookings."""
+    if 'user_id' not in session or session['user_type'] != 'passenger':
         return redirect(url_for('login'))
     passenger_id = session['user_id']
     conn = get_db_connection()
+    bookings = []
     if conn:
         cursor = conn.cursor()
-        cursor.execute(
-            "SELECT b.*, f.Flight_Number, f.Flight_Date, r.Origin_Airport_Code, r.Destination_Airport_Code FROM Booking b JOIN Flight f ON b.Flight_ID = f.Flight_ID JOIN Route r ON f.Route_ID = r.Route_ID WHERE b.Passenger_ID = %s",
-            (passenger_id,))
-        bookings = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return render_template('my_bookings.html', bookings=bookings)
-    else:
-        return "Database connection error"
+        try:
+            cursor.execute("""
+                SELECT
+                    b.Booking_ID,
+                    f.Flight_ID,  -- Changed from f.Flight_Number to f.Flight_ID
+                    a1.Airport_Name AS Departure_City,
+                    a2.Airport_Name AS Arrival_City,
+                    f.Departure_Time,
+                    f.Arrival_Time,
+                    b.Seat_Number,
+                    fc.Class_Name,
+                    t.Payment_Status
+                FROM Booking b
+                JOIN Flight f ON b.Flight_ID = f.Flight_ID
+                JOIN Route r ON f.Route_ID = r.Route_ID
+                JOIN Airport a1 ON r.Origin_Airport_Code = a1.Airport_Code
+                JOIN Airport a2 ON r.Destination_Airport_Code = a2.Airport_Code
+                JOIN Fare_Class fc ON b.Class_ID = fc.Class_ID
+                JOIN Transactions t ON b.Transaction_ID = t.Transaction_ID
+                WHERE b.Passenger_ID = %s
+                """, (passenger_id,))
+            bookings = cursor.fetchall()
+        except Exception as e:
+            logging.error(f"Database error: {e}")
+            flash(f"Error fetching bookings: {e}", "danger")
+            bookings = []
+        finally:
+            cursor.close()
+            conn.close()
+    return render_template('view_bookings.html', bookings=bookings)
     
 # Booking Confirmation
 @app.route('/confirm_booking', methods=['POST'])
@@ -377,52 +666,57 @@ def confirm_booking():
 
 
 
-# Cancel Flight
-@app.route('/cancel_booking/<int:booking_id>')
-def cancel_booking(booking_id):
-    if session.get('user_type') != 'passenger':
-        return redirect(url_for('login'))
-    conn = get_db_connection()
-    if conn:
-        cursor = conn.cursor()
-        cursor.execute("UPDATE Booking SET Booking_Status = 'Cancelled' WHERE Booking_ID = %s",
-                       (booking_id,))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return redirect(url_for('my_bookings'))
-    else:
-        return "Database connection error"
-    
 
 # Flight Status Check
-@app.route('/flight_status', methods=['GET', 'POST'])
-def flight_status():
-    if session.get('user_type') != 'passenger':
+@app.route('/flight_status_result', methods=['GET', 'POST'])
+def flight_status_result():
+    """Displays the status of a flight based on the Flight ID entered by the passenger."""
+    if 'user_id' not in session or session['user_type'] != 'passenger':
         return redirect(url_for('login'))
+
+    conn = get_db_connection()
+    if not conn:
+        return render_template('flight_status_result.html', flight_status=None)
+
+    cursor = conn.cursor()
     if request.method == 'POST':
-        flight_number = request.form['flight_number']
-        conn = get_db_connection()
-        if conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT fs.*, f.Flight_Number FROM Flight_Status fs JOIN Flight f ON fs.Flight_ID = f.Flight_ID WHERE f.Flight_Number = %s",
-                (flight_number,))
-            status = cursor.fetchone()
-            if status:
-                # Convert the result to a dictionary for easier handling in the template
-                status = {
-                    'Flight_Number': status[1],
-                    'Status': status[2],
-                    'Status_Update_Time': status[3],
-                    'Delay_Reason': status[4]
-                }
+        flight_id = request.form.get('flight_id')
+        if not flight_id:
+            flash("Please enter a Flight ID.", "danger")
             cursor.close()
             conn.close()
-            return render_template('flight_status_result.html', status=status)
-        else:
-            return "Database connection error"
-    return render_template('flight_status.html')
+            return render_template('flight_status_result.html', flight_status=None)
+
+        try:
+            #  Get the status and delay reason
+            cursor.execute("""
+                SELECT
+                    fs.Status,
+                    fs.Delay_Reason
+                FROM Flight_Status fs
+                WHERE fs.Flight_ID = %s
+                """, (flight_id,))
+            flight_status = cursor.fetchone()  # Fetch one
+
+            cursor.close()
+            conn.close()
+            if not flight_status:
+                flash("Flight not found or status not available.", "info")
+                return render_template('flight_status_result.html', flight_status=None)
+            else:
+                return render_template('flight_status_result.html', flight_status=flight_status)
+
+        except Exception as e:
+            logging.error(f"Error fetching flight status: {e}")
+            flash(f"An error occurred: {e}", "danger")
+            cursor.close()
+            conn.close()
+            return render_template('flight_status_result.html', flight_status=None)
+    else:
+        return render_template('flight_status_result.html', flight_status=None)
+    
+
+
 
 
 # Employee Information for Grievances
@@ -452,28 +746,59 @@ def employee_info_passenger():
 
 
 
-#Update Airplane type
-@app.route('/update_airplane_type', methods=['GET', 'POST'])
+@app.route('/update_airplane_type', methods=['GET', 'POST'])  # Keep the same route name for simplicity
 def update_airplane_type():
     if session.get('user_type') != 'staff':
         return redirect(url_for('login'))
+
     if request.method == 'POST':
-        airplane_id = request.form['airplane_id']
-        passenger_capacity = request.form['passenger_capacity']
-        manufacturer = request.form['manufacturer']
-        conn = get_db_connection()
-        if conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                "UPDATE Airplane_type SET Passenger_Capacity = %s, Manufacturer = %s WHERE Airplane_ID = %s",
-                (passenger_capacity, manufacturer, airplane_id))
-            conn.commit()
-            cursor.close()
-            conn.close()
-            return redirect(url_for('staff_dashboard'))
-        else:
-            return "Database connection error"
+        try:
+            # Get data from the form
+            airplane_id = request.form.get('airplane_id')
+            passenger_capacity = request.form.get('passenger_capacity')
+            weight = request.form.get('weight')
+            manufacturer = request.form.get('manufacturer')
+
+            # Basic Validation (Add more as needed!)
+            if not all([airplane_id, passenger_capacity, weight, manufacturer]):
+                flash("All fields are required.", "danger")
+                return render_template('update_airplane_type.html')
+
+            # Convert passenger_capacity and weight to integers (if needed)
+            try:
+                passenger_capacity = int(passenger_capacity)
+                weight = float(weight)  # Or int, depending on your table definition
+            except ValueError:
+                flash("Passenger Capacity and Weight must be numeric.", "danger")
+                return render_template('update_airplane_type.html')
+
+            # Database interaction (INSERT instead of UPDATE)
+            conn = get_db_connection()
+            if conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "INSERT INTO Airplane_type (Airplane_ID, Passenger_Capacity, Weight, Manufacturer) VALUES (%s, %s, %s, %s)",
+                    (airplane_id, passenger_capacity, weight, manufacturer)
+                )
+                conn.commit()
+                cursor.close()
+                conn.close()
+                flash("Airplane type added successfully!", "success")
+                return redirect(url_for('staff_dashboard'))  # Or wherever you want to redirect
+            else:
+                flash("Database connection error", "danger")
+                return render_template('update_airplane_type.html')
+
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logging.error(f"Error adding airplane type: {e}")
+            flash(f"An error occurred: {e}", "danger")
+            return render_template('update_airplane_type.html')
+
     return render_template('update_airplane_type.html')
+
+
 
 
 #Update Route 
@@ -481,25 +806,57 @@ def update_airplane_type():
 def update_route():
     if session.get('user_type') != 'staff':
         return redirect(url_for('login'))
+    conn = None  
     if request.method == 'POST':
-        route_id = request.form['route_id']
-        origin_airport_code = request.form['origin_airport_code']
-        destination_airport_code = request.form['destination_airport_code']
-        distance = request.form['distance']
-        duration = request.form['duration']
-        conn = get_db_connection()
-        if conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                "UPDATE Route SET Origin_Airport_Code = %s, Destination_Airport_Code = %s, Distance = %s, Duration = %s WHERE Route_ID = %s",
-                (origin_airport_code, destination_airport_code, distance, duration, route_id))
-            conn.commit()
-            cursor.close()
-            conn.close()
-            return redirect(url_for('staff_dashboard'))
-        else:
-            return "Database connection error"
+        try:
+            route_id = request.form.get('route_id')
+            origin_airport_code = request.form.get('origin_airport_code')
+            destination_airport_code = request.form.get('destination_airport_code')
+            distance = request.form.get('distance')
+            duration_str = request.form.get('duration')
+
+            if not all([route_id, origin_airport_code, destination_airport_code, distance, duration_str]):
+                flash("All fields are required.", "danger")
+                return render_template('update_route.html')
+
+            try:
+                route_id = int(route_id)
+                distance = float(distance)
+                duration = time.fromisoformat(duration_str)
+            except ValueError:
+                flash("Invalid data format.  Route ID and Distance must be numbers, Duration must be in HH:MM:SS or HH:MM format", "danger")
+                return render_template('update_route.html')
+
+            conn = get_db_connection()
+            if conn:
+                cursor = conn.cursor()
+                try:
+                    cursor.execute(
+                        "INSERT INTO Route (Route_ID, Origin_Airport_Code, Destination_Airport_Code, Distance, Duration) VALUES (%s, %s, %s, %s, %s)",
+                        (route_id, origin_airport_code, destination_airport_code, distance, duration))
+                    conn.commit()
+                    cursor.close()
+                    flash("Route information updated successfully!", "success")
+                    return redirect(url_for('staff_dashboard'))
+                except Exception as db_error:
+                    conn.rollback()
+                    logging.error(f"Database error: {db_error}")
+                    flash(f"Database error: {db_error}", "danger")
+                    return render_template('update_route.html')
+            else:
+                flash("Database connection error", "danger")
+                return render_template('update_route.html')
+
+        except Exception as e:
+            logging.error(f"Error updating route: {e}")
+            flash(f"An error occurred: {e}", "danger")
+            return render_template('update_route.html')
+        finally:  # Ensure connection is closed
+            if conn:
+                conn.close()
+
     return render_template('update_route.html')
+
 
 
 
@@ -584,40 +941,45 @@ def manage_employee_action():
 
 
 
-
-
-
-
-
-
-
-
-
 #Add a flight
 @app.route('/add_flight', methods=['GET', 'POST'])
 def add_flight():
     if session.get('user_type') != 'staff':
         return redirect(url_for('login'))
+
     if request.method == 'POST':
+        flight_id = request.form['flight_id']  # Get Flight_ID from form
         flight_number = request.form['flight_number']
         departure_time = request.form['departure_time']
         arrival_time = request.form['arrival_time']
         flight_date = request.form['flight_date']
         airplane_id = request.form['airplane_id']
         route_id = request.form['route_id']
+
         conn = get_db_connection()
         if conn:
             cursor = conn.cursor()
-            cursor.execute(
-                "INSERT INTO Flight (Flight_Number, Departure_Time, Arrival_Time, Flight_Date, Airplane_ID, Route_ID) VALUES (%s, %s, %s, %s, %s, %s)",
-                (flight_number, departure_time, arrival_time, flight_date, airplane_id, route_id))
-            conn.commit()
-            cursor.close()
-            conn.close()
-            return redirect(url_for('staff_dashboard'))
+            try:
+                cursor.execute(
+                    "INSERT INTO Flight (Flight_ID, Flight_Number, Departure_Time, Arrival_Time, Flight_Date, Airplane_ID, Route_ID) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                    (flight_id, flight_number, departure_time, arrival_time, flight_date, airplane_id, route_id)
+                )
+                conn.commit()
+                cursor.close()
+                conn.close()
+                return redirect(url_for('staff_dashboard'))
+
+            except Exception as e:
+                conn.rollback()  # Crucial!
+                print(f"Database Error: {e}")  # Log properly!
+                return f"Database error: {e}"  # Simple error - improve!
+
         else:
             return "Database connection error"
+
     return render_template('add_flight.html')
+
+
 
 
 #Remove Flight
@@ -625,19 +987,33 @@ def add_flight():
 def remove_flight():
     if session.get('user_type') != 'staff':
         return redirect(url_for('login'))
+    conn = None
     if request.method == 'POST':
-        flight_id = request.form['flight_id']
-        conn = get_db_connection()
-        if conn:
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM Flight WHERE Flight_ID = %s", (flight_id,))
-            conn.commit()
-            cursor.close()
-            conn.close()
-            return redirect(url_for('staff_dashboard'))
-        else:
-            return "Database connection error"
+        flight_id = request.form.get('flight_id')
+        try:
+            conn = get_db_connection()
+            if conn:
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM Flight WHERE Flight_ID = %s", (flight_id,))
+                conn.commit()
+                if cursor.rowcount > 0:
+                    flash("Flight removed successfully", "success")
+                else:
+                    flash("Flight not found", "info")
+                cursor.close()
+                return redirect(url_for('staff_dashboard'))
+            else:
+                flash("Database connection error", "danger")
+                return render_template('remove_flight.html')
+        except Exception as e:
+            logging.error(f"Error removing flight: {e}")
+            flash(f"An error occurred: {e}", "danger")
+            return render_template('remove_flight.html')
+        finally:
+            if conn:
+                conn.close()
     return render_template('remove_flight.html')
+
 
 
 
