@@ -45,10 +45,9 @@ CREATE TABLE Flight (
 
 -- Create Flight_Status table
 CREATE TABLE Flight_Status (
-    Status_ID INT AUTO_INCREMENT PRIMARY KEY,
-    Flight_ID VARCHAR(15) NOT NULL,              --
+    Status_ID INT PRIMARY KEY,
+    Flight_ID VARCHAR(15) NOT NULL,              
     Status VARCHAR(20) NOT NULL,
-    Status_Update_Time DATETIME NOT NULL,
     Delay_Reason VARCHAR(200),
     FOREIGN KEY (Flight_ID) REFERENCES Flight(Flight_ID)
 );

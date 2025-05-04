@@ -670,50 +670,37 @@ def confirm_booking():
 # Flight Status Check
 @app.route('/flight_status_result', methods=['GET', 'POST'])
 def flight_status_result():
-    """Displays the status of a flight based on the Flight ID entered by the passenger."""
     if 'user_id' not in session or session['user_type'] != 'passenger':
         return redirect(url_for('login'))
 
-    conn = get_db_connection()
-    if not conn:
-        return render_template('flight_status_result.html', flight_status=None)
+    status = None
+    error = None
 
-    cursor = conn.cursor()
     if request.method == 'POST':
         flight_id = request.form.get('flight_id')
         if not flight_id:
-            flash("Please enter a Flight ID.", "danger")
-            cursor.close()
-            conn.close()
-            return render_template('flight_status_result.html', flight_status=None)
-
-        try:
-            #  Get the status and delay reason
-            cursor.execute("""
-                SELECT
-                    fs.Status,
-                    fs.Delay_Reason
-                FROM Flight_Status fs
-                WHERE fs.Flight_ID = %s
-                """, (flight_id,))
-            flight_status = cursor.fetchone()  # Fetch one
-
-            cursor.close()
-            conn.close()
-            if not flight_status:
-                flash("Flight not found or status not available.", "info")
-                return render_template('flight_status_result.html', flight_status=None)
+            error = "Please enter a Flight ID."
+        else:
+            conn = get_db_connection()
+            if conn:
+                cursor = conn.cursor()
+                try:
+                    cursor.execute(
+                        "SELECT Status, Delay_Reason FROM Flight_Status WHERE Flight_ID = %s",
+                        (flight_id,))
+                    status = cursor.fetchone()
+                except Exception as e:
+                    error = "Error fetching flight status."
+                finally:
+                    cursor.close()
+                    conn.close()
+                if not status and not error:
+                    error = "Flight not found or status not available."
             else:
-                return render_template('flight_status_result.html', flight_status=flight_status)
+                error = "Database connection error."
 
-        except Exception as e:
-            logging.error(f"Error fetching flight status: {e}")
-            flash(f"An error occurred: {e}", "danger")
-            cursor.close()
-            conn.close()
-            return render_template('flight_status_result.html', flight_status=None)
-    else:
-        return render_template('flight_status_result.html', flight_status=None)
+    return render_template('flight_status_result.html', flight_status=status, error=error)
+
     
 
 
